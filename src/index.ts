@@ -29,7 +29,7 @@ const argv = minimist<{
 	package: string;
 }>(process.argv.slice(2), { string: ["_"] });
 
-const oldVersion = __DEV__
+const oldVersion = !__DEV__
 	? argv.package
 		? JSON.parse(
 				path.resolve(
