@@ -3,10 +3,14 @@
   "version": "0.1.2-alpha.0",
   "description": "A Command Line Tool to bump monorepo packages.",
   "main": "index.js",
+  "bin": {
+    "bump-monorepo": "dist/index.mjs"
+  },
   "type": "module",
   "files": [
-    "index.js",
-    "dist"
+    "dist",
+    "package.json",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "unbuild --stub",
@@ -33,9 +37,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/wibus-wee/bump-monorepo.git"
-  },
-  "bin": {
-    "bump-monorepo": "index.js"
   },
   "license": "MIT",
   "devDependencies": {
