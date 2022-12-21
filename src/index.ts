@@ -295,7 +295,16 @@ async function main() {
 		generateChangelog &&
 		conventionalChangelog({
 			preset: "angular",
-		}).pipe(fs.createWriteStream("CHANGELOG.md"));
+			releaseCount: 0,
+			skipUnstable: false,
+		}).on("data", (chunk) => {
+			const data = "# CHANGELOG\n\n" + chunk.toString();
+			fs.writeFileSync(
+				path.resolve(__dirname, `CHANGELOG.md`),
+				data,
+				"utf-8"
+			);
+		});
 
 	__DEV__ && console.log(`$ git add .`);
 	!__DEV__ && (await $`git add .`);
@@ -320,24 +329,19 @@ async function main() {
 	console.log(`$ ${pushTagsCmd}`);
 	!__DEV__ && (await $`${pushTagsCmd}`);
 
-	getConfig()?.afterPush?.forEach((v: string) => {
-		$`${v}`;
-	});
-
 	if (publish) {
 		const publishCmd = `npm publish`;
 		if (thePkg === "all") {
 			const packages = getPackages();
 			for (const p of packages) {
-				const cmd = `cd packages/${p.value} && ${publishCmd}`;
 				if (p.value === "all") continue;
-				console.log(`$ ${cmd}`);
-				!__DEV__ && (await $`${cmd}`);
+				__DEV__ &&
+					console.log(`$ cd packages/${p.value} && ${publishCmd}`);
+				!__DEV__ && (await $`cd packages/${p.value} && ${publishCmd}`);
 			}
 		} else {
-			const cmd = `cd packages/${thePkg} && ${publishCmd}`;
-			console.log(`$ ${cmd}`);
-			!__DEV__ && (await $`${cmd}`);
+			__DEV__ && console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
+			!__DEV__ && (await $`cd packages/${thePkg} && ${publishCmd}`);
 		}
 	}
 
