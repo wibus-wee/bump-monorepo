@@ -313,11 +313,17 @@ async function main() {
 		getConfig()?.message?.replace("%s", newVersion) ||
 		defaultConfig.message.replace("%s", newVersion);
 
-	__DEV__ && console.log(`git commit -am "${message}" --no-verify`);
-	!__DEV__ && (await $`git commit -am "${message}" --no-verify`);
+	console.log(`$ git commit -am "${message}" --no-verify`);
+	!__DEV__ &&
+		spawn("git", ["commit", "-am", message, "--no-verify"], {
+			stdio: "inherit",
+		});
 
-	__DEV__ && console.log(`git tag -a ${newVersion} -m "${message}`);
-	!__DEV__ && (await $`git tag -a ${newVersion} -m "${message}`);
+	console.log(`$ git tag -a ${newVersion} -m "${message}`);
+	!__DEV__ &&
+		spawn("git", ["tag", "-a", newVersion, "-m", message], {
+			stdio: "inherit",
+		});
 
 	__DEV__ && console.log(`$ git push`);
 	!__DEV__ && (await $`git push`);
