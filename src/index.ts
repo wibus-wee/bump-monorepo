@@ -1,11 +1,12 @@
+import conventionalChangelog from "conventional-changelog";
+import { $ } from "zx";
 import fs from "node:fs";
 import path from "node:path";
 import minimist from "minimist";
 import prompts from "prompts";
-import { exec } from "node:child_process";
 import { green, red } from "kolorist";
 
-const __DEV__ = false;
+const __DEV__ = true;
 
 const __dirname = process.cwd();
 
@@ -29,24 +30,19 @@ const argv = minimist<{
 	package: string;
 }>(process.argv.slice(2), { string: ["_"] });
 
-const oldVersion = !__DEV__
-	? argv.package
-		? JSON.parse(
-				fs.readFileSync(
-					path.resolve(
-						__dirname,
-						`packages/${argv.package}/package.json`
-					),
-					"utf-8"
-				)
-		  ).version
-		: JSON.parse(
-				fs.readFileSync(
-					path.resolve(__dirname, "package.json"),
-					"utf-8"
-				)
-		  ).version
-	: "0.0.0";
+const oldVersion = argv.package
+	? JSON.parse(
+			fs.readFileSync(
+				path.resolve(
+					__dirname,
+					`packages/${argv.package}/package.json`
+				),
+				"utf-8"
+			)
+	  ).version
+	: JSON.parse(
+			fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
+	  ).version;
 
 enum VersionType {
 	MAJOR = "major",
@@ -167,8 +163,9 @@ function getPackages() {
 	try {
 		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
 	} catch (error) {
-		packages = [];
-		__DEV__ && (packages = ["core", "react"]);
+		console.log(red("No packages found, ARE YOU IN THE ROOT?"));
+		!__DEV__ && process.exit(1);
+		__DEV__ && (packages = ["test"]);
 	}
 	return [
 		{
@@ -213,27 +210,18 @@ function getConfig() {
 	return config;
 }
 
-function cmd(command: string) {
-	return new Promise((resolve, reject) => {
-		exec(command, (error, stdout, stderr) => {
-			if (error) {
-				reject(error);
-				return;
-			}
-			if (stderr) {
-				reject(stderr);
-				return;
-			}
-			resolve(stdout);
-		});
-	});
-}
-
 async function main() {
 	console.clear();
+	const gitStatus = (await $`git status --porcelain`.quiet()).toString();
+	if (gitStatus && !__DEV__) {
+		console.log(red("Please commit all changes before bumping version"));
+		process.exit(1);
+	}
 	console.log(`Current Directory: ${__dirname}`);
 	console.log(`Current Version: ${oldVersion}`);
-	let _mode: prompts.Answers<"mode" | "custom" | "package" | "publish">;
+	let _mode: prompts.Answers<
+		"mode" | "custom" | "package" | "publish" | "generateChangelog"
+	>;
 	try {
 		_mode = await prompts(
 			[
@@ -260,6 +248,12 @@ async function main() {
 					message: "Publish to NPM?",
 					initial: false,
 				},
+				{
+					type: "confirm",
+					name: "generateChangelog",
+					message: "Generate Changelog?",
+					initial: true,
+				},
 			],
 			{
 				onCancel: () => {
@@ -271,7 +265,7 @@ async function main() {
 		console.log(e);
 	}
 
-	const { mode, custom, package: pkg, publish } = _mode;
+	const { mode, custom, package: pkg, publish, generateChangelog } = _mode;
 	const thePkg = pkg || argv.package;
 	let newVersion;
 	if (mode === "custom") {
@@ -296,13 +290,15 @@ async function main() {
 		!__DEV__ && updatePackageJson(newVersion, thePkg);
 	}
 
-	const addCmd = `git add .`;
-	console.log(`$ ${addCmd}`);
-	!__DEV__ && (await cmd(addCmd));
+	__DEV__ && console.log(`$ generating changelog`);
+	!__DEV__ &&
+		generateChangelog &&
+		conventionalChangelog({
+			preset: "angular",
+		}).pipe(fs.createWriteStream("CHANGELOG.md"));
 
-	getConfig()?.preCommit?.forEach((v: string) => {
-		cmd(v);
-	});
+	__DEV__ && console.log(`$ git add .`);
+	!__DEV__ && (await $`git add .`);
 
 	const message =
 		getConfig()?.message?.replace("%s", newVersion) ||
@@ -310,22 +306,22 @@ async function main() {
 
 	const commitCmd = `git commit -am "${message}" --no-verify`;
 	console.log(`$ ${commitCmd}`);
-	!__DEV__ && (await cmd(commitCmd));
+	!__DEV__ && (await $`${commitCmd}`);
 
 	const tagCmd = `git tag -a ${newVersion} -m "${message}"`;
 	console.log(`$ ${tagCmd}`);
-	!__DEV__ && (await cmd(tagCmd));
+	!__DEV__ && (await $`${tagCmd}`);
 
 	const pushCmd = `git push`;
 	console.log(`$ ${pushCmd}`);
-	!__DEV__ && (await cmd(pushCmd));
+	!__DEV__ && (await $`${pushCmd}`);
 
 	const pushTagsCmd = `git push --tags`;
 	console.log(`$ ${pushTagsCmd}`);
-	!__DEV__ && (await cmd(pushTagsCmd));
+	!__DEV__ && (await $`${pushTagsCmd}`);
 
 	getConfig()?.afterPush?.forEach((v: string) => {
-		cmd(v);
+		$`${v}`;
 	});
 
 	if (publish) {
@@ -333,14 +329,15 @@ async function main() {
 		if (thePkg === "all") {
 			const packages = getPackages();
 			for (const p of packages) {
+				const cmd = `cd packages/${p.value} && ${publishCmd}`;
 				if (p.value === "all") continue;
-				console.log(`$ cd packages/${p.value} && ${publishCmd}`);
-				!__DEV__ &&
-					(await cmd(`cd packages/${p.value} && ${publishCmd}`));
+				console.log(`$ ${cmd}`);
+				!__DEV__ && (await $`${cmd}`);
 			}
 		} else {
-			console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
-			!__DEV__ && (await cmd(`cd packages/${thePkg} && ${publishCmd}`));
+			const cmd = `cd packages/${thePkg} && ${publishCmd}`;
+			console.log(`$ ${cmd}`);
+			!__DEV__ && (await $`${cmd}`);
 		}
 	}
 
@@ -349,4 +346,6 @@ async function main() {
 
 main().catch((e) => {
 	console.error(e);
+	console.log(red("Something went wrong!"));
+	// !__DEV__ && $`git reset --hard HEAD~1`.quiet();
 });
