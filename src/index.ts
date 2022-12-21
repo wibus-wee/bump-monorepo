@@ -1,10 +1,11 @@
 import conventionalChangelog from "conventional-changelog";
-import { $ } from "zx";
 import fs from "node:fs";
 import path from "node:path";
 import minimist from "minimist";
 import prompts from "prompts";
 import { green, red } from "kolorist";
+import spawnSync, { spawn } from "cross-spawn";
+import { execSync } from "node:child_process";
 
 const __DEV__ = false;
 
@@ -161,7 +162,9 @@ async function generagteChoice() {
 function getPackages() {
 	let packages;
 	try {
-		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
+		packages = fs
+			.readdirSync(path.resolve(__dirname, "packages"))
+			.filter((v) => v !== ".DS_Store");
 	} catch (error) {
 		console.log(red("No packages found, ARE YOU IN THE ROOT?"));
 		!__DEV__ && process.exit(1);
@@ -212,7 +215,7 @@ function getConfig() {
 
 async function main() {
 	console.clear();
-	const gitStatus = (await $`git status --porcelain`.quiet()).toString();
+	const gitStatus = execSync("git status --porcelain").toString();
 	if (gitStatus && !__DEV__) {
 		console.log(red("Please commit all changes before bumping version"));
 		process.exit(1);
@@ -289,6 +292,24 @@ async function main() {
 		console.log(`$ Updating ${thePkg} package version to: ${newVersion}`);
 		!__DEV__ && updatePackageJson(newVersion, thePkg);
 	}
+	console.log(`$ git add .`);
+	!__DEV__ && spawnSync("git", ["add", "."], { stdio: "inherit" });
+
+	const message = String(
+		getConfig()?.message?.replace("%s", newVersion) ||
+			defaultConfig.message.replace("%s", newVersion)
+	);
+	console.log(`$ git commit -am "${message}" --no-verify`);
+	!__DEV__ &&
+		spawnSync("git", ["commit", "-am", message, "--no-verify"], {
+			stdio: "inherit",
+		});
+
+	console.log(`$ git tag -a ${newVersion} -m "${message}`);
+	!__DEV__ &&
+		spawnSync("git", ["tag", "-a", newVersion, "-m", message], {
+			stdio: "inherit",
+		});
 
 	__DEV__ && console.log(`$ generating changelog`);
 	!__DEV__ &&
@@ -297,39 +318,18 @@ async function main() {
 			preset: "angular",
 			releaseCount: 0,
 			skipUnstable: false,
-		}).on("data", (chunk) => {
-			const data = "# CHANGELOG\n\n" + chunk.toString();
-			fs.writeFileSync(
-				path.resolve(__dirname, `CHANGELOG.md`),
-				data,
-				"utf-8"
-			);
-		});
-
-	__DEV__ && console.log(`$ git add .`);
-	!__DEV__ && (await $`git add .`);
-
-	const message =
-		getConfig()?.message?.replace("%s", newVersion) ||
-		defaultConfig.message.replace("%s", newVersion);
-
-	console.log(`$ git commit -am "${message}" --no-verify`);
+		}).pipe(fs.createWriteStream("CHANGELOG.md"));
+	!__DEV__ && spawnSync("git", ["add", "CHANGELOG.md"], { stdio: "inherit" });
 	!__DEV__ &&
-		spawn("git", ["commit", "-am", message, "--no-verify"], {
+		spawnSync("git", ["commit", "--amend", "--no-edit"], {
 			stdio: "inherit",
 		});
 
-	console.log(`$ git tag -a ${newVersion} -m "${message}`);
-	!__DEV__ &&
-		spawn("git", ["tag", "-a", newVersion, "-m", message], {
-			stdio: "inherit",
-		});
+	console.log(`$ git push`);
+	!__DEV__ && spawnSync("git", ["push"], { stdio: "inherit" });
 
-	__DEV__ && console.log(`$ git push`);
-	!__DEV__ && (await $`git push`);
-
-	__DEV__ && console.log(`$ git push --tags`);
-	!__DEV__ && (await $`git push --tags`);
+	console.log(`$ git push --tags`);
+	!__DEV__ && spawnSync("git", ["push", "--tags"], { stdio: "inherit" });
 
 	if (publish) {
 		const publishCmd = `npm publish`;
@@ -337,13 +337,13 @@ async function main() {
 			const packages = getPackages();
 			for (const p of packages) {
 				if (p.value === "all") continue;
-				__DEV__ &&
-					console.log(`$ cd packages/${p.value} && ${publishCmd}`);
-				!__DEV__ && (await $`cd packages/${p.value} && ${publishCmd}`);
+				console.log(`$ cd packages/${p.value} && ${publishCmd}`);
+				!__DEV__ &&
+					spawnSync("cd", ["packages", p.value, "&&", publishCmd]);
 			}
 		} else {
-			__DEV__ && console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
-			!__DEV__ && (await $`cd packages/${thePkg} && ${publishCmd}`);
+			console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
+			!__DEV__ && spawnSync("cd", ["packages", thePkg, "&&", publishCmd]);
 		}
 	}
 
@@ -353,5 +353,6 @@ async function main() {
 main().catch((e) => {
 	console.error(e);
 	console.log(red("Something went wrong!"));
-	// !__DEV__ && $`git reset --hard HEAD~1`.quiet();
+	!__DEV__ &&
+		spawnSync("git", ["reset", "--hard", "HEAD~1"], { stdio: "inherit" });
 });

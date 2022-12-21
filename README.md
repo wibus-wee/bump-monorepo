@@ -1,4 +1,4 @@
-# bump-monorepo
+# [declared] bump-monorepo
 
 A Command Line Tool to bump monorepo packages.
 
