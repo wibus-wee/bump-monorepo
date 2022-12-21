@@ -7,6 +7,8 @@ import { green, red } from "kolorist";
 
 const __DEV__ = false;
 
+const __dirname = process.cwd();
+
 const defaultConfig = {
 	bump: {
 		message: "release: %s",
