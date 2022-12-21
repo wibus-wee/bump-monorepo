@@ -4,7 +4,7 @@ import path from "node:path";
 import minimist from "minimist";
 import prompts from "prompts";
 import { green, red } from "kolorist";
-import spawnSync, { spawn } from "cross-spawn";
+import { sync } from "cross-spawn";
 import { execSync } from "node:child_process";
 
 const __DEV__ = false;
@@ -213,6 +213,31 @@ function getConfig() {
 	return config;
 }
 
+export const generateChangeLog = (
+	options?: Parameters<typeof conventionalChangelog>[0]
+) => {
+	if (options) {
+		Reflect.deleteProperty(options, "enable");
+	}
+
+	return new Promise<string>((resolve) => {
+		let changelog = "# CHANGELOG\n\n";
+		conventionalChangelog({
+			preset: "angular",
+			releaseCount: 0,
+			skipUnstable: false,
+
+			...options,
+		})
+			.on("data", (chunk: any) => {
+				changelog += chunk.toString();
+			})
+			.on("end", () => {
+				resolve(changelog);
+			});
+	});
+};
+
 async function main() {
 	console.clear();
 	const gitStatus = execSync("git status --porcelain").toString();
@@ -223,7 +248,7 @@ async function main() {
 	console.log(`Current Directory: ${__dirname}`);
 	console.log(`Current Version: ${oldVersion}`);
 	let _mode: prompts.Answers<
-		"mode" | "custom" | "package" | "publish" | "generateChangelog"
+		"mode" | "custom" | "package" | "publish" | "changelog"
 	>;
 	try {
 		_mode = await prompts(
@@ -253,7 +278,7 @@ async function main() {
 				},
 				{
 					type: "confirm",
-					name: "generateChangelog",
+					name: "changelog",
 					message: "Generate Changelog?",
 					initial: true,
 				},
@@ -268,7 +293,7 @@ async function main() {
 		console.log(e);
 	}
 
-	const { mode, custom, package: pkg, publish, generateChangelog } = _mode;
+	const { mode, custom, package: pkg, publish, changelog } = _mode;
 	const thePkg = pkg || argv.package;
 	let newVersion;
 	if (mode === "custom") {
@@ -292,8 +317,17 @@ async function main() {
 		console.log(`$ Updating ${thePkg} package version to: ${newVersion}`);
 		!__DEV__ && updatePackageJson(newVersion, thePkg);
 	}
+
+	changelog && console.log(`$ generating changelog`);
+	!__DEV__ &&
+		changelog &&
+		(await generateChangeLog().then((changelog) => {
+			fs.writeFileSync("CHANGELOG.md", changelog);
+		}));
+	!__DEV__ && sync("git", ["add", "CHANGELOG.md"], { stdio: "inherit" });
+
 	console.log(`$ git add .`);
-	!__DEV__ && spawnSync("git", ["add", "."], { stdio: "inherit" });
+	!__DEV__ && sync("git", ["add", "."], { stdio: "inherit" });
 
 	const message = String(
 		getConfig()?.message?.replace("%s", newVersion) ||
@@ -301,35 +335,21 @@ async function main() {
 	);
 	console.log(`$ git commit -am "${message}" --no-verify`);
 	!__DEV__ &&
-		spawnSync("git", ["commit", "-am", message, "--no-verify"], {
+		sync("git", ["commit", "-am", message, "--no-verify"], {
 			stdio: "inherit",
 		});
 
 	console.log(`$ git tag -a ${newVersion} -m "${message}`);
 	!__DEV__ &&
-		spawnSync("git", ["tag", "-a", newVersion, "-m", message], {
-			stdio: "inherit",
-		});
-
-	__DEV__ && console.log(`$ generating changelog`);
-	!__DEV__ &&
-		generateChangelog &&
-		conventionalChangelog({
-			preset: "angular",
-			releaseCount: 0,
-			skipUnstable: false,
-		}).pipe(fs.createWriteStream("CHANGELOG.md"));
-	!__DEV__ && spawnSync("git", ["add", "CHANGELOG.md"], { stdio: "inherit" });
-	!__DEV__ &&
-		spawnSync("git", ["commit", "--amend", "--no-edit"], {
+		sync("git", ["tag", "-a", newVersion, "-m", message], {
 			stdio: "inherit",
 		});
 
 	console.log(`$ git push`);
-	!__DEV__ && spawnSync("git", ["push"], { stdio: "inherit" });
+	!__DEV__ && sync("git", ["push"], { stdio: "inherit" });
 
 	console.log(`$ git push --tags`);
-	!__DEV__ && spawnSync("git", ["push", "--tags"], { stdio: "inherit" });
+	!__DEV__ && sync("git", ["push", "--tags"], { stdio: "inherit" });
 
 	if (publish) {
 		const publishCmd = `npm publish`;
@@ -338,12 +358,11 @@ async function main() {
 			for (const p of packages) {
 				if (p.value === "all") continue;
 				console.log(`$ cd packages/${p.value} && ${publishCmd}`);
-				!__DEV__ &&
-					spawnSync("cd", ["packages", p.value, "&&", publishCmd]);
+				!__DEV__ && sync("cd", ["packages", p.value, "&&", publishCmd]);
 			}
 		} else {
 			console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
-			!__DEV__ && spawnSync("cd", ["packages", thePkg, "&&", publishCmd]);
+			!__DEV__ && sync("cd", ["packages", thePkg, "&&", publishCmd]);
 		}
 	}
 
@@ -354,5 +373,5 @@ main().catch((e) => {
 	console.error(e);
 	console.log(red("Something went wrong!"));
 	!__DEV__ &&
-		spawnSync("git", ["reset", "--hard", "HEAD~1"], { stdio: "inherit" });
+		sync("git", ["reset", "--hard", "HEAD~1"], { stdio: "inherit" });
 });
