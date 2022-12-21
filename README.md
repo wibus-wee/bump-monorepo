@@ -1,8 +1,9 @@
-# [declared] bump-monorepo
+# bump-monorepo
 
 A Command Line Tool to bump monorepo packages.
 
-![preview](https://user-images.githubusercontent.com/62133302/208828975-641b0105-9c62-4284-ace9-df0f61a6b5d0.gif)
+![preview](https://user-images.githubusercontent.com/62133302/208906751-9cb06ce1-7902-4519-9b2a-8759727c077a.gif)
+
 
 ## Features
 
