@@ -313,21 +313,17 @@ async function main() {
 		getConfig()?.message?.replace("%s", newVersion) ||
 		defaultConfig.message.replace("%s", newVersion);
 
-	const commitCmd = `git commit -am "${message}" --no-verify`;
-	console.log(`$ ${commitCmd}`);
-	!__DEV__ && (await $`${commitCmd}`);
+	__DEV__ && console.log(`git commit -am "${message}" --no-verify`);
+	!__DEV__ && (await $`git commit -am "${message}" --no-verify`);
 
-	const tagCmd = `git tag -a ${newVersion} -m "${message}"`;
-	console.log(`$ ${tagCmd}`);
-	!__DEV__ && (await $`${tagCmd}`);
+	__DEV__ && console.log(`git tag -a ${newVersion} -m "${message}`);
+	!__DEV__ && (await $`git tag -a ${newVersion} -m "${message}`);
 
-	const pushCmd = `git push`;
-	console.log(`$ ${pushCmd}`);
-	!__DEV__ && (await $`${pushCmd}`);
+	__DEV__ && console.log(`$ git push`);
+	!__DEV__ && (await $`git push`);
 
-	const pushTagsCmd = `git push --tags`;
-	console.log(`$ ${pushTagsCmd}`);
-	!__DEV__ && (await $`${pushTagsCmd}`);
+	__DEV__ && console.log(`$ git push --tags`);
+	!__DEV__ && (await $`git push --tags`);
 
 	if (publish) {
 		const publishCmd = `npm publish`;
