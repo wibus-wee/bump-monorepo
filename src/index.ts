@@ -5,7 +5,7 @@ import prompts from "prompts";
 import { exec } from "node:child_process";
 import { green, red } from "kolorist";
 
-const __DEV__ = true;
+const __DEV__ = false;
 
 const defaultConfig = {
 	bump: {
@@ -29,10 +29,14 @@ const argv = minimist<{
 
 const oldVersion = __DEV__
 	? argv.package
-		? // eslint-disable-next-line @typescript-eslint/no-var-requires
-		  require(`../packages/${argv.package}/package.json`).version
+		? JSON.parse(
+				path.resolve(
+					__dirname,
+					`../packages/${argv.package}/package.json`
+				)
+		  ).version
 		: // eslint-disable-next-line @typescript-eslint/no-var-requires
-		  require("../package.json").version
+		  require(path.resolve(__dirname, "../package.json")).version
 	: "0.0.0";
 
 enum VersionType {
