@@ -348,5 +348,5 @@ async function main() {
 }
 
 main().catch((e) => {
-	console.error(red(`An error occurred while bumping the version: ${e}`));
+	console.error(e);
 });
