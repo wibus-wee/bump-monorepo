@@ -35,14 +35,14 @@ const oldVersion = !__DEV__
 				fs.readFileSync(
 					path.resolve(
 						__dirname,
-						`../packages/${argv.package}/package.json`
+						`packages/${argv.package}/package.json`
 					),
 					"utf-8"
 				)
 		  ).version
 		: JSON.parse(
 				fs.readFileSync(
-					path.resolve(__dirname, "../package.json"),
+					path.resolve(__dirname, "package.json"),
 					"utf-8"
 				)
 		  ).version
