@@ -1,7 +1,7 @@
 {
-	"name": "create-jwc",
+	"name": "@wibus-wee/bump-monorepo",
 	"version": "0.0.0",
-	"description": "A Command Line Tool to create jwc.js project",
+	"description": "A Command Line Tool to bump monorepo packages.",
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
@@ -18,20 +18,18 @@
 			"pre-commit": "lint-staged"
 		}
 	},
-	"keywords": [
-		"jwcjs"
-	],
+	"keywords": ["bump"],
 	"author": "wibus-wee <wibus@qq.com>",
 	"bugs": {
-		"url": "https://github.com/jwcjs/create-jwc/issues"
+		"url": "https://github.com/wibus-wee/bump-monorepo/issues"
 	},
-	"homepage": "https://github.com/jwcjs/create-jwc#readme",
+	"homepage": "https://github.com/wibus-wee/bump-monorepo#readme",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/jwcjs/create-jwc.git"
+		"url": "git+https://github.com/wibus-wee/bump-monorepo.git"
 	},
 	"bin": {
-		"create-jwc": "index.js"
+		"bump-monorepo": "index.js"
 	},
 	"license": "MIT",
 	"devDependencies": {
