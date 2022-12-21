@@ -20,7 +20,7 @@ A Command Line Tool to bump monorepo packages.
 ## Usage
 
 ```bash
-$ npm i -g @wibus-wee/bump-monorepo
+$ npm i -g @wibus/bump-monorepo
 ```
 
 Write your config in `package.json`:

@@ -1,5 +1,5 @@
 {
-  "name": "@wibus-wee/bump-monorepo",
+  "name": "@wibus/bump-monorepo",
   "version": "0.1.0-alpha.0",
   "description": "A Command Line Tool to bump monorepo packages.",
   "main": "index.js",
