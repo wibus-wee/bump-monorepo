@@ -1,6 +1,6 @@
 {
   "name": "@wibus/bump-monorepo",
-  "version": "0.1.4-alpha.3",
+  "version": "0.1.4-alpha.4",
   "description": "A Command Line Tool to bump monorepo packages.",
   "main": "index.js",
   "bin": {
