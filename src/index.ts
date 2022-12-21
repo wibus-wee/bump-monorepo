@@ -6,7 +6,7 @@ import minimist from "minimist";
 import prompts from "prompts";
 import { green, red } from "kolorist";
 
-const __DEV__ = true;
+const __DEV__ = false;
 
 const __dirname = process.cwd();
 
