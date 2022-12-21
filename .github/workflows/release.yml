@@ -35,10 +35,9 @@ jobs:
           version: latest
           run_install: true
 
-      - name: Test
-        timeout-minutes: 10
+      - name: Build
         run: |
-          npm run build:core
+          npm run build
 
       - name: Create Release
         id: create_release
