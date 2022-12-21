@@ -32,13 +32,20 @@ const argv = minimist<{
 const oldVersion = !__DEV__
 	? argv.package
 		? JSON.parse(
-				path.resolve(
-					__dirname,
-					`../packages/${argv.package}/package.json`
+				fs.readFileSync(
+					path.resolve(
+						__dirname,
+						`../packages/${argv.package}/package.json`
+					),
+					"utf-8"
 				)
 		  ).version
-		: // eslint-disable-next-line @typescript-eslint/no-var-requires
-		  require(path.resolve(__dirname, "../package.json")).version
+		: JSON.parse(
+				fs.readFileSync(
+					path.resolve(__dirname, "../package.json"),
+					"utf-8"
+				)
+		  ).version
 	: "0.0.0";
 
 enum VersionType {
