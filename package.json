@@ -60,15 +60,5 @@
 		"*.{js,ts,css,json}": [
 			"prettier --write"
 		]
-	},
-	"bump": {
-		"leading": [
-			"git pull --rebase"
-		],
-		"publish": false,
-		"changelog": true,
-		"allowed_branches": [
-			"main"
-		]
 	}
 }
