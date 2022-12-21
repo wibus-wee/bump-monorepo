@@ -4,10 +4,6 @@ A Command Line Tool to bump monorepo packages.
 
 ![preview](https://user-images.githubusercontent.com/62133302/208828975-641b0105-9c62-4284-ace9-df0f61a6b5d0.gif)
 
-<pre align="center">
-🧪 Working in Progress
-</pre>
-
 ## Features
 
 - [x] Bump packages in monorepo
@@ -16,6 +12,8 @@ A Command Line Tool to bump monorepo packages.
 - [x] After-push hook
 - [x] Alpha, Beta, Canary, RC, Patch, Minor, Major, Custom version
 - [x] Custom commit message
+
+> This project is quite restrictive because it was developed for proprietary repositories. If you have any suggestions, please feel free to open an issue.
 
 ## Usage
 
