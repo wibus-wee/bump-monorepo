@@ -28,10 +28,10 @@ Write your config in `package.json`:
 ```json5
 {
   // ...
-  bump: {
-    message: "release: %s", // commit message
-    preCommit: [], // pre-commit hook
-    afterPush: [], // after-push hook
+  "bump": {
+    "message": "release: %s", // commit message
+    "preCommit": [], // pre-commit hook
+    "afterPush": [], // after-push hook
   }
   // ...
 }
