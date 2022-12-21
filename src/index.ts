@@ -165,7 +165,7 @@ async function generagteChoice() {
 function getPackages() {
 	let packages;
 	try {
-		packages = fs.readdirSync(path.resolve(__dirname, "../packages"));
+		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
 	} catch (error) {
 		packages = [];
 		__DEV__ && (packages = ["core", "react"]);
@@ -187,9 +187,9 @@ function getPackages() {
 function updatePackageJson(newVersion: string, name?: string) {
 	let tpath;
 	if (name) {
-		tpath = path.resolve(__dirname, `../packages/${name}/package.json`);
+		tpath = path.resolve(__dirname, `packages/${name}/package.json`);
 	} else {
-		tpath = path.resolve(__dirname, `../package.json`);
+		tpath = path.resolve(__dirname, `package.json`);
 	}
 	const packageJson = JSON.parse(fs.readFileSync(tpath, "utf-8"));
 	packageJson.version = newVersion;
@@ -201,7 +201,7 @@ function getConfig() {
 	try {
 		!__DEV__ &&
 			(pkg = fs.readFileSync(
-				path.resolve(__dirname, `../package.json`),
+				path.resolve(__dirname, `package.json`),
 				"utf-8"
 			));
 	} catch (error) {
