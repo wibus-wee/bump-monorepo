@@ -4,6 +4,10 @@
   "description": "A Command Line Tool to bump monorepo packages.",
   "main": "index.js",
   "type": "module",
+  "files": [
+    "index.js",
+    "dist"
+  ],
   "scripts": {
     "dev": "unbuild --stub",
     "build": "unbuild",
