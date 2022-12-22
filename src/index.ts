@@ -7,7 +7,7 @@ import { blue, green, red, yellow } from "kolorist";
 import { sync } from "cross-spawn";
 import { execSync } from "node:child_process";
 
-const __DEV__ = true;
+const __DEV__ = false;
 
 const __dirname = process.cwd();
 
@@ -15,6 +15,7 @@ const defaultConfig = {
 	bump: {
 		message: "release: %s",
 		activePackages: ["test", "core"],
+		publish: true,
 	},
 }.bump;
 
@@ -35,7 +36,11 @@ function log(...args: any[]) {
 }
 
 function warn(...args: any[]) {
-	console.log(yellow("[WARN]"), ...args);
+	console.log(yellow(`[WARN] ${args}`));
+}
+
+function error(...args: any[]) {
+	console.log(red(`[ERROR] ${args}`));
 }
 
 const oldVersion = JSON.parse(
@@ -161,13 +166,13 @@ function getPackages() {
 	try {
 		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
 	} catch (error) {
-		console.log(red("No packages found, ARE YOU IN THE ROOT?"));
+		error("No packages found, ARE YOU IN THE ROOT?");
 		!__DEV__ && process.exit(1);
 		__DEV__ && (packages = ["test", "test2", "core"]);
 	}
 
 	packages = packages
-		.filter((v) => activePackages.includes(v))
+		.filter((v) => (activePackages ? activePackages.includes(v) : true))
 		.filter((v) =>
 			!__DEV__ ? isDir(path.resolve(__dirname, `packages/${v}`)) : true
 		);
@@ -207,9 +212,10 @@ function getConfig() {
 				"utf-8"
 			));
 	} catch (error) {
-		console.log(error);
+		error(error);
 		process.exit(1);
 	}
+
 	__DEV__ && (pkg = JSON.stringify(defaultConfig));
 	const config = JSON.parse(pkg).bump as typeof defaultConfig;
 	return config;
@@ -271,9 +277,13 @@ const activePackages = __DEV__
 
 async function main() {
 	console.clear();
+	if (argv.package && !activePackages?.includes(argv.package)) {
+		error(`Package ${argv.package} is not active`);
+		process.exit(1);
+	}
 	const gitStatus = execSync("git status --porcelain").toString();
 	if (gitStatus && !__DEV__) {
-		console.log(red("Please commit all changes before bumping version"));
+		error("You have uncommited changes, please commit them first");
 		process.exit(1);
 	}
 	console.log(`Current Directory: ${green(__dirname)}`);
@@ -283,6 +293,7 @@ async function main() {
 	let _mode: prompts.Answers<
 		"mode" | "custom" | "packages" | "publish" | "changelog"
 	>;
+	log(getConfig());
 	try {
 		_mode = await prompts(
 			[
@@ -313,7 +324,7 @@ async function main() {
 					type: "confirm",
 					name: "publish",
 					message: "Publish to NPM?",
-					initial: false,
+					initial: getConfig()?.publish || false,
 				},
 				{
 					type: "confirm",
@@ -329,7 +340,7 @@ async function main() {
 			}
 		);
 	} catch (e) {
-		console.log(e);
+		error(e);
 	}
 
 	const { mode, custom, packages: pkgs, publish, changelog } = _mode;
@@ -348,10 +359,8 @@ async function main() {
 		if (pkg.join() !== "all") {
 			const intersection = pkg.filter((v) => activePackages.includes(v));
 			if (intersection.length === 0) {
-				console.log(
-					red(
-						`The selected packages are not in the activePackages list, please check the configuration file`
-					)
+				error(
+					`The selected packages are not in the activePackages list, please check the configuration file`
 				);
 				process.exit(1);
 			}
@@ -362,7 +371,11 @@ async function main() {
 		const packages = getPackages();
 		for (const p of packages) {
 			if (p.value === "all") continue;
-			if (activePackages.length && !activePackages.includes(p.value)) {
+			if (
+				activePackages &&
+				activePackages.length &&
+				!activePackages.includes(p.value)
+			) {
 				warn(
 					`You have configured activePackages to to skip ${p.value}`
 				);
@@ -448,6 +461,6 @@ async function main() {
 main().catch((e) => {
 	console.error(e);
 	console.log(red("Something went wrong!"));
-	!__DEV__ &&
-		sync("git", ["reset", "--hard", "HEAD~1"], { stdio: "inherit" });
+	// !__DEV__ &&
+	// 	sync("git", ["reset", "--hard", "HEAD~1"], { stdio: "inherit" });
 });

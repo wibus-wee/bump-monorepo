@@ -31,6 +31,10 @@ Write your config in `package.json`:
   // ...
   "bump": {
     "message": "release: %s", // commit message
+    "activePackages": [
+      "core"
+    ],
+    "publish": true
   }
   // ...
 }
@@ -42,11 +46,10 @@ Then run:
 $ bump-monorepo
 ```
 
-It will use the root `package.json` as the main version. Though you choose to bump a package inside, it will bump the root `package.json` too.
-
 ## Warnings
 
-If you config `activePackages` in `package.json`, it will only bump the packages in the array.
+1. It will use the root `package.json` as the main version. Though you choose to bump a package inside, it will bump the root `package.json` too.
+2. If you config `activePackages` in `package.json`, it will only bump the packages in the array.
 
 ```json5
 {
