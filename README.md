@@ -31,8 +31,6 @@ Write your config in `package.json`:
   // ...
   "bump": {
     "message": "release: %s", // commit message
-    "preCommit": [], // pre-commit hook
-    "afterPush": [], // after-push hook
   }
   // ...
 }
@@ -43,6 +41,24 @@ Then run:
 ```bash
 $ bump-monorepo
 ```
+
+It will use the root `package.json` as the main version. Though you choose to bump a package inside, it will bump the root `package.json` too.
+
+## Warnings
+
+If you config `activePackages` in `package.json`, it will only bump the packages in the array.
+
+```json5
+{
+  // ...
+  "bump": {
+    "activePackages": ["packages/a", "packages/b"]
+  }
+  // ...
+}
+```
+
+> **warning**: Once you do this, you must continue to use this config. Otherwise, it may damage your repository.
 
 ## Author
 
