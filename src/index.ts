@@ -3,19 +3,18 @@ import fs from "node:fs";
 import path from "node:path";
 import minimist from "minimist";
 import prompts from "prompts";
-import { green, red } from "kolorist";
+import { blue, green, red, yellow } from "kolorist";
 import { sync } from "cross-spawn";
 import { execSync } from "node:child_process";
 
-const __DEV__ = false;
+const __DEV__ = true;
 
 const __dirname = process.cwd();
 
 const defaultConfig = {
 	bump: {
 		message: "release: %s",
-		preCommit: [],
-		afterPush: [],
+		activePackages: ["test", "core"],
 	},
 }.bump;
 
@@ -31,19 +30,17 @@ const argv = minimist<{
 	package: string;
 }>(process.argv.slice(2), { string: ["_"] });
 
-const oldVersion = argv.package
-	? JSON.parse(
-			fs.readFileSync(
-				path.resolve(
-					__dirname,
-					`packages/${argv.package}/package.json`
-				),
-				"utf-8"
-			)
-	  ).version
-	: JSON.parse(
-			fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
-	  ).version;
+function log(...args: any[]) {
+	__DEV__ && console.log(blue(`[DEV] ${args}`));
+}
+
+function warn(...args: any[]) {
+	console.log(yellow("[WARN]"), ...args);
+}
+
+const oldVersion = JSON.parse(
+	fs.readFileSync(path.resolve(__dirname, "package.json"), "utf-8")
+).version;
 
 enum VersionType {
 	MAJOR = "major",
@@ -94,7 +91,7 @@ function getNewVersion(type: VersionType) {
 			return `${Number(major)}.${Number(minor)}.${Number(patch)}-beta.0`;
 		case VersionType.CANARY:
 			// eslint-disable-next-line prettier/prettier
-      return `${Number(major)}.${Number(minor)}.${Number(patch)}-canary.0`;
+			return `${Number(major)}.${Number(minor)}.${Number(patch)}-canary.0`;
 		case VersionType.RC:
 			return `${Number(major)}.${Number(minor)}.${Number(patch)}-rc.0`;
 	}
@@ -160,16 +157,21 @@ async function generagteChoice() {
 }
 
 function getPackages() {
-	let packages;
+	let packages: string[] = [];
 	try {
-		packages = fs
-			.readdirSync(path.resolve(__dirname, "packages"))
-			.filter((v) => v !== ".DS_Store");
+		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
 	} catch (error) {
 		console.log(red("No packages found, ARE YOU IN THE ROOT?"));
 		!__DEV__ && process.exit(1);
-		__DEV__ && (packages = ["test"]);
+		__DEV__ && (packages = ["test", "test2", "core"]);
 	}
+
+	packages = packages
+		.filter((v) => activePackages.includes(v))
+		.filter((v) =>
+			!__DEV__ ? isDir(path.resolve(__dirname, `packages/${v}`)) : true
+		);
+
 	return [
 		{
 			title: "All Packages",
@@ -185,7 +187,7 @@ function getPackages() {
 }
 
 function updatePackageJson(newVersion: string, name?: string) {
-	let tpath;
+	let tpath: string;
 	if (name) {
 		tpath = path.resolve(__dirname, `packages/${name}/package.json`);
 	} else {
@@ -213,6 +215,14 @@ function getConfig() {
 	return config;
 }
 
+function isDir(path: string) {
+	try {
+		return fs.lstatSync(path).isDirectory();
+	} catch (e) {
+		return false;
+	}
+}
+
 export const generateChangeLog = (
 	options?: Parameters<typeof conventionalChangelog>[0]
 ) => {
@@ -238,6 +248,27 @@ export const generateChangeLog = (
 	});
 };
 
+const npm = "package-lock.json";
+const yarn = "yarn.lock";
+const pnpm = "pnpm-lock.yaml";
+const lockFiles = [npm, yarn, pnpm];
+function getPackageManager() {
+	const pkgManager = lockFiles.find((v) => fs.existsSync(v));
+	if (!pkgManager) {
+		return "npm";
+	} else {
+		const pkg = pkgManager.split("-")[0];
+		if (pkg === "package") {
+			return "npm";
+		}
+		return pkg;
+	}
+}
+
+const activePackages = __DEV__
+	? defaultConfig.activePackages
+	: getConfig()?.activePackages;
+
 async function main() {
 	console.clear();
 	const gitStatus = execSync("git status --porcelain").toString();
@@ -245,10 +276,12 @@ async function main() {
 		console.log(red("Please commit all changes before bumping version"));
 		process.exit(1);
 	}
-	console.log(`Current Directory: ${__dirname}`);
-	console.log(`Current Version: ${oldVersion}`);
+	console.log(`Current Directory: ${green(__dirname)}`);
+	console.log(`Current Version: ${green(oldVersion)}`);
+	console.log(`Active Packages: ${green(activePackages?.join(", "))}`);
+	console.log(`Package Manager: ${green(getPackageManager())}`);
 	let _mode: prompts.Answers<
-		"mode" | "custom" | "package" | "publish" | "changelog"
+		"mode" | "custom" | "packages" | "publish" | "changelog"
 	>;
 	try {
 		_mode = await prompts(
@@ -265,10 +298,16 @@ async function main() {
 					message: "Enter a custom version",
 				},
 				{
-					type: argv.package ? null : "select",
-					name: "package",
-					message: "Select a package",
-					choices: getPackages(),
+					type: "multiselect",
+					name: "packages",
+					message: "Select packages",
+					choices: getPackages().map((v) => {
+						return {
+							title: v.title,
+							value: v.value,
+							selected: v.value === argv.package,
+						};
+					}),
 				},
 				{
 					type: "confirm",
@@ -293,32 +332,57 @@ async function main() {
 		console.log(e);
 	}
 
-	const { mode, custom, package: pkg, publish, changelog } = _mode;
-	const thePkg = pkg || argv.package;
-	let newVersion;
+	const { mode, custom, packages: pkgs, publish, changelog } = _mode;
+	let thePkg = (pkgs as string[]) || argv.package || "all";
+	if (thePkg.length === 0) thePkg = "all";
+	let newVersion: string;
 	if (mode === "custom") {
 		newVersion = custom;
 	} else {
 		newVersion = getNewVersion(mode);
 	}
 
-	if (thePkg === "all") {
-		console.log(`$ Updating root package version to: ${newVersion}`);
-		!__DEV__ && updatePackageJson(newVersion);
+	// 检查 thePkg 是否与 activePackages 有交集
+	if (activePackages) {
+		const pkg = typeof thePkg === "string" ? [thePkg] : thePkg;
+		if (pkg.join() !== "all") {
+			const intersection = pkg.filter((v) => activePackages.includes(v));
+			if (intersection.length === 0) {
+				console.log(
+					red(
+						`The selected packages are not in the activePackages list, please check the configuration file`
+					)
+				);
+				process.exit(1);
+			}
+		}
+	}
+	if ((typeof thePkg === "object" ? thePkg.join("") : thePkg) === "all") {
+		log(`# Updating all packages to: ${newVersion}`);
 		const packages = getPackages();
 		for (const p of packages) {
 			if (p.value === "all") continue;
-			console.log(
-				`# Updating \`${p.value}\` package version to: ${newVersion}`
-			);
+			if (activePackages.length && !activePackages.includes(p.value)) {
+				warn(
+					`You have configured activePackages to to skip ${p.value}`
+				);
+				continue;
+			}
+			log(`# Updating \`${p.value}\` package version to: ${newVersion}`);
 			!__DEV__ && updatePackageJson(newVersion, p.value);
 		}
 	} else {
-		console.log(`$ Updating ${thePkg} package version to: ${newVersion}`);
-		!__DEV__ && updatePackageJson(newVersion, thePkg);
+		// have checked thePkg is in activePackages
+		for (const p of thePkg) {
+			log(`$ Updating \`${p}\` package version to: ${newVersion}`);
+			!__DEV__ && updatePackageJson(newVersion, p);
+		}
 	}
 
-	changelog && console.log(`$ generating changelog`);
+	log(`$ Updating root package version to: ${newVersion}`);
+	!__DEV__ && updatePackageJson(newVersion); // update root package.json
+
+	changelog && log(`$ generating changelog`);
 	!__DEV__ &&
 		changelog &&
 		(await generateChangeLog().then((changelog) => {
@@ -352,17 +416,29 @@ async function main() {
 	!__DEV__ && sync("git", ["push", "--tags"], { stdio: "inherit" });
 
 	if (publish) {
-		const publishCmd = `npm publish`;
-		if (thePkg === "all") {
+		const publishCmd = `${getPackageManager()} publish`;
+		if ((typeof thePkg === "object" ? thePkg.join("") : thePkg) === "all") {
 			const packages = getPackages();
 			for (const p of packages) {
 				if (p.value === "all") continue;
+				if (
+					activePackages.length &&
+					!activePackages.includes(p.value)
+				) {
+					warn(
+						`You have configured activePackages to to skip ${p.value}`
+					);
+					continue;
+				}
 				console.log(`$ cd packages/${p.value} && ${publishCmd}`);
 				!__DEV__ && sync("cd", ["packages", p.value, "&&", publishCmd]);
 			}
 		} else {
-			console.log(`$ cd packages/${thePkg} && ${publishCmd}`);
-			!__DEV__ && sync("cd", ["packages", thePkg, "&&", publishCmd]);
+			// have checked thePkg is in activePackages
+			for (const p of thePkg) {
+				console.log(`$ cd packages/${p} && ${publishCmd}`);
+				!__DEV__ && sync("cd", ["packages", p, "&&", publishCmd]);
+			}
 		}
 	}
 
