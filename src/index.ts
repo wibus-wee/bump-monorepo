@@ -7,7 +7,7 @@ import { blue, green, red, yellow } from "kolorist";
 import { sync } from "cross-spawn";
 import { execSync } from "node:child_process";
 
-const __DEV__ = false;
+const __DEV__ = true;
 
 const __dirname = process.cwd();
 
@@ -166,7 +166,7 @@ function getPackages() {
 	try {
 		packages = fs.readdirSync(path.resolve(__dirname, "packages"));
 	} catch (error) {
-		error("No packages found, ARE YOU IN THE ROOT?");
+		console.log(red("No packages found, ARE YOU IN THE ROOT?"));
 		!__DEV__ && process.exit(1);
 		__DEV__ && (packages = ["test", "test2", "core"]);
 	}
@@ -293,7 +293,6 @@ async function main() {
 	let _mode: prompts.Answers<
 		"mode" | "custom" | "packages" | "publish" | "changelog"
 	>;
-	log(getConfig());
 	try {
 		_mode = await prompts(
 			[
@@ -340,9 +339,9 @@ async function main() {
 			}
 		);
 	} catch (e) {
-		error(e);
+		console.log(e);
+		process.exit(1);
 	}
-
 	const { mode, custom, packages: pkgs, publish, changelog } = _mode;
 	let thePkg = (pkgs as string[]) || argv.package || "all";
 	if (thePkg.length === 0) thePkg = "all";
