@@ -7,7 +7,7 @@ import { blue, green, red, yellow } from "kolorist";
 import { sync } from "cross-spawn";
 import { execSync } from "node:child_process";
 
-const __DEV__ = true;
+const __DEV__ = false;
 
 const __dirname = process.cwd();
 
